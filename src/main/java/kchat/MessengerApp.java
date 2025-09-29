@@ -13,7 +13,6 @@ public class MessengerApp extends Application {
     public void start(Stage primaryStage) {
         server = new MessengerServer(8080);
         server.start();
-
         MessengerWindow messengerWindow = new MessengerWindow();
         messengerWindow.show(primaryStage);
 
