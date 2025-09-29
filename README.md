@@ -1,4 +1,4 @@
-# Simple Messenger Application
+# K-Chat - Real-time Messenger Application
 
 A functional messenger application built with JavaFX and WebSocket technology for real-time messaging.
 
@@ -7,15 +7,15 @@ A functional messenger application built with JavaFX and WebSocket technology fo
 The application follows a clean, modular architecture:
 
 ```
-src/main/java/org/example/
-├── MessengerApp.java           # Main JavaFX application
-├── ServerLauncher.java         # Standalone server launcher
+src/main/java/kchat/
+├── MessengerApp.java           # Main JavaFX application (GUI + Server)
+├── ServerLauncher.java         # Standalone server launcher (Server only)
 ├── client/
 │   └── MessengerClient.java    # WebSocket client
 ├── server/
 │   └── MessengerServer.java    # WebSocket server with broadcasting
 ├── model/
-│   └── Message.java            # Message data model
+│   └── Message.java            # Message data model with JSON support
 └── ui/
     └── MessengerWindow.java     # Main UI components
 ```
@@ -25,33 +25,77 @@ src/main/java/org/example/
 - Real-time messaging using WebSocket connections
 - Multiple clients can connect simultaneously
 - Auto-broadcast messages to all connected users
-- Simple, clean UI with no unnecessary complexity
+- Simple, clean JavaFX UI
 - Username customization
 - Connection status indicators
 - Auto-scrolling message area
+- JSON message serialization
+- Comprehensive test coverage
 
 ## Running the Application
 
 ### Prerequisites
-Make sure you have Java 17+ installed.
+- Java 17+ installed
+- Gradle (included via wrapper)
 
-### Option 1: Run Complete Application (Client + Server)
+### Two Different Ways to Run:
+
+#### Option 1: Complete Application (GUI Client + Server)
 ```bash
 ./gradlew run
 ```
-This starts both the server and client in one application.
+**What this does:**
+- Starts the MessengerServer on port 8080
+- Launches the JavaFX GUI client application
+- Connects the GUI client to the server automatically
+- Perfect for single-user testing or when you want both server and client together
 
-### Option 2: Run Standalone Server
+#### Option 2: Standalone Server Only
 ```bash
 ./gradlew run --args="kchat.ServerLauncher"
 ```
-Then run clients separately by running the main application.
+**What this does:**
+- Starts ONLY the MessengerServer on port 8080 (no GUI)
+- Runs in console mode with minimal output
+- Waits for Enter key to stop the server
+- Perfect for dedicated server hosting or when you want to run multiple separate clients
+
+### Key Differences Between the Two Commands:
+
+| Command | What Runs | GUI | Use Case |
+|---------|-----------|-----|----------|
+| `./gradlew run` | MessengerApp | ✅ JavaFX GUI + Server | Development, single-user testing |
+| `./gradlew run --args="kchat.ServerLauncher"` | ServerLauncher | ❌ Console only | Dedicated server, multiple clients |
 
 ### Testing with Multiple Clients
-1. Start the application: `./gradlew run`
-2. Open additional client instances by running the application again in new terminals
-3. Change usernames in each client
-4. Start messaging between clients
+1. **Start dedicated server**: `./gradlew run --args="kchat.ServerLauncher"`
+2. **Run multiple clients**: Open new terminals and run `./gradlew run` in each
+3. **Change usernames** in each client window
+4. **Start messaging** between clients
+
+## Testing
+
+The application includes comprehensive test coverage:
+
+### Running Tests
+```bash
+./gradlew test
+```
+
+### Test Structure
+```
+src/test/java/kchat/
+├── MessengerIntegrationTest.java    # Integration tests
+├── model/
+│   └── MessageTest.java            # Message model tests
+└── server/
+    └── MessengerServerTest.java    # Server functionality tests
+```
+
+### Test Coverage Includes:
+- **Message Model**: JSON serialization/deserialization, getters/setters, validation
+- **Server Functionality**: Server lifecycle, connection management, port configuration
+- **Integration Testing**: End-to-end server operations, multiple instances
 
 ## Usage
 
@@ -67,6 +111,25 @@ Then run clients separately by running the main application.
 - **UI**: JavaFX for clean, native desktop interface
 - **Messaging**: JSON serialization using Jackson
 - **Architecture**: Clean separation of concerns with dedicated packages
+- **Package Structure**: Organized under `kchat` namespace
+- **Testing**: JUnit 5 with comprehensive coverage
+
+## Development
+
+### Building
+```bash
+./gradlew build
+```
+
+### Running Tests
+```bash
+./gradlew test
+```
+
+### Clean Build
+```bash
+./gradlew clean build
+```
 
 ## No Security Features
 This is a simple demonstration application with no authentication, encryption, or input validation - suitable for testing and learning purposes only.
