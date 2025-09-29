@@ -38,7 +38,7 @@ src/main/java/kchat/
 - Java 17+ installed
 - Gradle (included via wrapper)
 
-### Two Different Ways to Run:
+### Three Different Ways to Run:
 
 #### Option 1: Complete Application (GUI Client + Server)
 ```bash
@@ -58,18 +58,28 @@ src/main/java/kchat/
 - Starts ONLY the MessengerServer on port 8080 (no GUI)
 - Runs in console mode with minimal output
 - Waits for Enter key to stop the server
-- Perfect for dedicated server hosting or when you want to run multiple separate clients
+- Perfect for dedicated server hosting when you want to run multiple separate clients
 
-### Key Differences Between the Two Commands:
+#### Option 3: Client Only (No Server)
+```bash
+./gradlew runClient
+```
+**What this does:**
+- Launches ONLY the JavaFX GUI client application (no server)
+- Connects to an existing server (must be running separately)
+- Perfect for connecting multiple clients to a dedicated server
 
-| Command | What Runs | GUI | Use Case |
-|---------|-----------|-----|----------|
-| `./gradlew run` | MessengerApp | ✅ JavaFX GUI + Server | Development, single-user testing |
-| `./gradlew runServer` | ServerLauncher | ❌ Console only | Dedicated server, multiple clients |
+### Key Differences Between the Commands:
+
+| Command | Server | GUI Client | Use Case |
+|---------|--------|------------|----------|
+| `./gradlew run` | ✅ Starts | ✅ Starts | Development, single-user testing |
+| `./gradlew runServer` | ✅ Starts | ❌ None | Dedicated server hosting |  
+| `./gradlew runClient` | ❌ None | ✅ Starts | Connect to existing server |
 
 ### Testing with Multiple Clients
 1. **Start dedicated server**: `./gradlew runServer`
-2. **Run multiple clients**: Open new terminals and run `./gradlew run` in each
+2. **Run multiple clients**: Open new terminals and run `./gradlew runClient` in each
 3. **Change usernames** in each client window
 4. **Start messaging** between clients
 

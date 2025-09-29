@@ -41,8 +41,23 @@ tasks.register<JavaExec>("runServer") {
     description = "Run the standalone server (no GUI)"
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("kchat.ServerLauncher")
+    // Enable standard input for server shutdown
+    standardInput = System.`in`
 }
 
+// Custom task to run client only - using JavaExec directly with JavaFX configuration
+tasks.register<JavaExec>("runClient") {
+    group = "application"
+    description = "Run only the GUI client (connects to existing server)"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("kchat.ClientLauncher")
+
+    // Configure JavaFX modules directly
+    jvmArgs = listOf(
+        "--module-path", configurations.runtimeClasspath.get().asPath,
+        "--add-modules", "javafx.controls,javafx.fxml"
+    )
+}
 
 javafx {
     version = "22.0.1"

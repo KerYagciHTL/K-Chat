@@ -1,6 +1,7 @@
 package kchat;
 
 import kchat.server.MessengerServer;
+import java.util.Scanner;
 
 public class ServerLauncher {
     public static void main(String[] args) {
@@ -21,12 +22,18 @@ public class ServerLauncher {
         System.out.println("Messenger server started on port " + port);
         System.out.println("Press Enter to stop the server...");
 
-        try {
-            System.in.read();
+        // Use Scanner instead of System.in.read() for better Gradle compatibility
+        try (Scanner scanner = new Scanner(System.in)) {
+            scanner.nextLine(); // Wait for Enter key
             server.stop();
             System.out.println("Server stopped.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+            try {
+                server.stop();
+            } catch (Exception stopException) {
+                System.err.println("Error stopping server: " + stopException.getMessage());
+            }
         }
     }
 }
