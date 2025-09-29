@@ -43,13 +43,6 @@ tasks.register<JavaExec>("runServer") {
     mainClass.set("kchat.ServerLauncher")
 }
 
-// Custom task to run GUI client + server
-tasks.register<JavaExec>("runClient") {
-    group = "application"
-    description = "Run the full GUI application (client + server)"
-    classpath = sourceSets["main"].runtimeClasspath
-    mainClass.set("kchat.MessengerApp")
-}
 
 javafx {
     version = "22.0.1"
