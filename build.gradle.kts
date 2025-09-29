@@ -35,6 +35,22 @@ application {
     mainClass.set("kchat.MessengerApp")
 }
 
+// Custom task to run server only
+tasks.register<JavaExec>("runServer") {
+    group = "application"
+    description = "Run the standalone server (no GUI)"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("kchat.ServerLauncher")
+}
+
+// Custom task to run GUI client + server
+tasks.register<JavaExec>("runClient") {
+    group = "application"
+    description = "Run the full GUI application (client + server)"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("kchat.MessengerApp")
+}
+
 javafx {
     version = "22.0.1"
     modules = listOf("javafx.controls", "javafx.fxml") // pulls transitive (graphics, base) + native libs for your OS

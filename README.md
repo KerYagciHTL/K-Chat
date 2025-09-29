@@ -42,7 +42,7 @@ src/main/java/kchat/
 
 #### Option 1: Complete Application (GUI Client + Server)
 ```bash
-./gradlew run
+./gradlew runClient
 ```
 **What this does:**
 - Starts the MessengerServer on port 8080
@@ -52,7 +52,7 @@ src/main/java/kchat/
 
 #### Option 2: Standalone Server Only
 ```bash
-./gradlew run --args="kchat.ServerLauncher"
+./gradlew runServer
 ```
 **What this does:**
 - Starts ONLY the MessengerServer on port 8080 (no GUI)
@@ -64,12 +64,12 @@ src/main/java/kchat/
 
 | Command | What Runs | GUI | Use Case |
 |---------|-----------|-----|----------|
-| `./gradlew run` | MessengerApp | ✅ JavaFX GUI + Server | Development, single-user testing |
-| `./gradlew run --args="kchat.ServerLauncher"` | ServerLauncher | ❌ Console only | Dedicated server, multiple clients |
+| `./gradlew runClient` | MessengerApp | ✅ JavaFX GUI + Server | Development, single-user testing |
+| `./gradlew runServer` | ServerLauncher | ❌ Console only | Dedicated server, multiple clients |
 
 ### Testing with Multiple Clients
-1. **Start dedicated server**: `./gradlew run --args="kchat.ServerLauncher"`
-2. **Run multiple clients**: Open new terminals and run `./gradlew run` in each
+1. **Start dedicated server**: `./gradlew runServer`
+2. **Run multiple clients**: Open new terminals and run `./gradlew runClient` in each
 3. **Change usernames** in each client window
 4. **Start messaging** between clients
 
