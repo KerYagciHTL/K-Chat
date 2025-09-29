@@ -1,0 +1,74 @@
+package kchat;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import kchat.model.Message;
+
+import java.net.URI;
+import java.util.function.Consumer;
+
+public class MessengerClient extends WebSocketClient {
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private Consumer<Message> messageHandler;
+    private Consumer<String> connectionStatusHandler;
+
+    public MessengerClient(URI serverUri) {
+        super(serverUri);
+    }
+
+    @Override
+    public void onOpen(ServerHandshake handshake) {
+        System.out.println("Connected to server");
+        if (connectionStatusHandler != null) {
+            connectionStatusHandler.accept("Connected");
+        }
+    }
+
+    @Override
+    public void onMessage(String message) {
+        try {
+            Message msg = objectMapper.readValue(message, Message.class);
+            if (messageHandler != null) {
+                messageHandler.accept(msg);
+            }
+        } catch (Exception e) {
+            System.err.println("Error parsing message: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void onClose(int code, String reason, boolean remote) {
+        System.out.println("Connection closed: " + reason);
+        if (connectionStatusHandler != null) {
+            connectionStatusHandler.accept("Disconnected");
+        }
+    }
+
+    @Override
+    public void onError(Exception ex) {
+        System.err.println("Client error: " + ex.getMessage());
+        if (connectionStatusHandler != null) {
+            connectionStatusHandler.accept("Error: " + ex.getMessage());
+        }
+    }
+
+    public void sendMessage(String sender, String content) {
+        try {
+            Message message = new Message(sender, content, System.currentTimeMillis());
+            String jsonMessage = objectMapper.writeValueAsString(message);
+            send(jsonMessage);
+        } catch (Exception e) {
+            System.err.println("Error sending message: " + e.getMessage());
+        }
+    }
+
+    public void setMessageHandler(Consumer<Message> handler) {
+        this.messageHandler = handler;
+    }
+
+    public void setConnectionStatusHandler(Consumer<String> handler) {
+        this.connectionStatusHandler = handler;
+    }
+}

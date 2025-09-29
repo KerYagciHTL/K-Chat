@@ -6,7 +6,7 @@ plugins {
     id("org.openjfx.javafxplugin") version "0.0.14"
 }
 
-group = "org.example"
+group = "kchat"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -14,6 +14,15 @@ repositories {
 }
 
 dependencies {
+    // WebSocket server
+    implementation("org.java-websocket:Java-WebSocket:1.5.4")
+
+    // JSON processing
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+
+    // Logging
+    implementation("org.slf4j:slf4j-simple:2.0.7")
+
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -23,12 +32,12 @@ dependencies {
 
 application {
     // Fully qualified main class (non-modular project)
-    mainClass.set("org.example.Main")
+    mainClass.set("kchat.MessengerApp")
 }
 
 javafx {
     version = "22.0.1"
-    modules = listOf("javafx.controls") // pulls transitive (graphics, base) + native libs for your OS
+    modules = listOf("javafx.controls", "javafx.fxml") // pulls transitive (graphics, base) + native libs for your OS
 }
 
 tasks.test {
