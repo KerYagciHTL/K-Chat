@@ -86,7 +86,6 @@ public class MessengerServer extends WebSocketServer {
         return connections.size();
     }
 
-    // Package-private for test visibility: parses raw JSON into a Message and applies server timestamp logic
     Message processIncomingRawJson(String rawJson) throws java.io.IOException {
         Message msg = objectMapper.readValue(rawJson, Message.class);
         msg.setTimestamp(System.currentTimeMillis());

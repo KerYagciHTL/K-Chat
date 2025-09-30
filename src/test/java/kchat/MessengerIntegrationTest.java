@@ -27,7 +27,7 @@ public class MessengerIntegrationTest {
         if (server != null) {
             try {
                 server.stop();
-                Thread.sleep(100); // Give time for cleanup
+                Thread.sleep(100);
             } catch (Exception e) {
                 System.err.println("Error stopping test server: " + e.getMessage());
             }
@@ -38,13 +38,13 @@ public class MessengerIntegrationTest {
     void testServerLifecycle() throws Exception {
         assertDoesNotThrow(() -> {
             server.start();
-            Thread.sleep(200); // Wait for server to fully start
+            Thread.sleep(200);
 
             assertTrue(server.getAddress() != null);
             assertEquals(TEST_PORT, server.getAddress().getPort());
 
             server.stop();
-            Thread.sleep(200); // Wait for server to fully stop
+            Thread.sleep(200);
         });
     }
 

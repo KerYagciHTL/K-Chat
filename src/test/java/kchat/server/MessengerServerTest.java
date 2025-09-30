@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 public class MessengerServerTest {
 
     private MessengerServer server;
-    private final int TEST_PORT = 8081; // Use different port to avoid conflicts
+    private final int TEST_PORT = 8081;
 
     @BeforeEach
     void setUp() {
@@ -63,7 +63,6 @@ public class MessengerServerTest {
         try {
             customPortServer.stop();
         } catch (Exception e) {
-            // Server wasn't started, so stopping might throw exception - that's ok
         }
     }
 }

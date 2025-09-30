@@ -22,9 +22,8 @@ public class ServerLauncher {
         System.out.println("Messenger server started on port " + port);
         System.out.println("Press Enter to stop the server...");
 
-        // Use Scanner instead of System.in.read() for better Gradle compatibility
         try (Scanner scanner = new Scanner(System.in)) {
-            scanner.nextLine(); // Wait for Enter key
+            scanner.nextLine();
             server.stop();
             System.out.println("Server stopped.");
         } catch (Exception e) {

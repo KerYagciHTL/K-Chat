@@ -33,7 +33,6 @@ public class MessengerWindow {
         stage.setScene(scene);
         stage.show();
 
-        // Auto-connect to local server
         connectToServer();
     }
 
@@ -80,7 +79,7 @@ public class MessengerWindow {
         messageInput = new TextField();
         messageInput.setPromptText("Type your message here...");
         messageInput.setPrefWidth(400);
-        messageInput.setOnAction(e -> sendMessage()); // Send on Enter
+        messageInput.setOnAction(e -> sendMessage());
 
         sendButton = new Button("Send");
         sendButton.setOnAction(e -> sendMessage());

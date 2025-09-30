@@ -13,7 +13,7 @@ public class MessengerServerLogicTest {
 
     private static class CapturingServer extends MessengerServer {
         private final List<Message> broadcasts = new ArrayList<>();
-        CapturingServer() { super(12345); /* arbitrary unused port (won't be started) */ }
+        CapturingServer() { super(12345);}
         @Override
         protected void broadcast(Message message) {
             broadcasts.add(message);
