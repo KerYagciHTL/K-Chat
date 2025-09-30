@@ -39,27 +39,20 @@ public class MessengerServerTest {
 
     @Test
     void testServerStartAndStop() throws Exception {
-        // Start server
         server.start();
 
-        // Wait a bit for server to start
         Thread.sleep(100);
 
-        // Server should be running
         assertTrue(server.getAddress() != null);
 
-        // Stop server
         server.stop();
 
-        // Wait a bit for server to stop
         Thread.sleep(100);
     }
 
     @Test
     void testConnectionCount() {
         assertEquals(0, server.getConnectionCount());
-        // Note: Testing actual connections would require WebSocket client setup
-        // which is more complex and might be better suited for integration tests
     }
 
     @Test

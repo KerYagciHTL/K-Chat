@@ -36,7 +36,6 @@ public class MessengerIntegrationTest {
 
     @Test
     void testServerLifecycle() throws Exception {
-        // Test server can start and stop without errors
         assertDoesNotThrow(() -> {
             server.start();
             Thread.sleep(200); // Wait for server to fully start
@@ -57,7 +56,6 @@ public class MessengerIntegrationTest {
         assertEquals("TestUser", message.getSender());
         assertEquals("Hello Integration Test!", message.getContent());
 
-        // Test that message can be converted to string (used in server logging)
         String messageString = message.toString();
         assertTrue(messageString.contains("TestUser"));
         assertTrue(messageString.contains("Hello Integration Test!"));
@@ -65,7 +63,6 @@ public class MessengerIntegrationTest {
 
     @Test
     void testMultipleServerInstances() throws Exception {
-        // Test that we can create multiple server instances on different ports
         MessengerServer server2 = new MessengerServer(TEST_PORT + 1);
         MessengerServer server3 = new MessengerServer(TEST_PORT + 2);
 
@@ -78,7 +75,6 @@ public class MessengerIntegrationTest {
             assertEquals(TEST_PORT + 2, server3.getAddress().getPort());
 
         } finally {
-            // Clean up additional servers
             try { if (server2 != null) server2.stop(); } catch (Exception e) { /* ignore */ }
             try { if (server3 != null) server3.stop(); } catch (Exception e) { /* ignore */ }
         }

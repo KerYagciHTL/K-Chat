@@ -14,14 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * WebSocket integration tests focused on deterministic behaviors:
- *  - Connection count tracking
- *  - Broadcast of user messages to all connected clients
- *  - Server-side timestamp assignment
- *
- * Tests intentionally avoid brittle timing assertions around implicit welcome messages.
- */
 @Disabled("Flaky network timing; replaced by deterministic MessengerServerLogicTest")
 public class MessengerServerWebSocketTest {
 
@@ -41,7 +33,6 @@ public class MessengerServerWebSocketTest {
         port = findFreePort();
         server = new MessengerServer(port);
         server.start();
-        // Allow additional startup time (CI can be slow)
         Thread.sleep(200);
     }
 
@@ -91,7 +82,6 @@ public class MessengerServerWebSocketTest {
     void connectionCountIncrementsAndDecrements() throws Exception {
         assertEquals(0, server.getConnectionCount());
         TestClient c1 = newClient();
-        // Wait until server acknowledges connection count
         long deadline = System.currentTimeMillis() + 2000;
         while (server.getConnectionCount() < 1 && System.currentTimeMillis() < deadline) Thread.sleep(25);
         assertEquals(1, server.getConnectionCount());
@@ -109,7 +99,6 @@ public class MessengerServerWebSocketTest {
         while (server.getConnectionCount() < 2 && System.currentTimeMillis() < deadline) Thread.sleep(25);
         assertEquals(2, server.getConnectionCount(), "Both clients not registered in time");
 
-        // Discard any prior welcome/announcement messages to focus on user message broadcast only
         sender.getReceived().clear();
         receiver.getReceived().clear();
 
@@ -120,7 +109,6 @@ public class MessengerServerWebSocketTest {
         assertTrue(sender.waitForAtLeast(1, 3000), "Sender did not receive broadcast");
         assertTrue(receiver.waitForAtLeast(1, 3000), "Receiver did not receive broadcast");
 
-        // Find the user message (ignore any late system messages)
         Message senderView = sender.getReceived().stream().filter(m -> "Hello everyone".equals(m.getContent())).findFirst()
             .orElseThrow(() -> new AssertionError("Sender missing user message"));
         Message receiverView = receiver.getReceived().stream().filter(m -> "Hello everyone".equals(m.getContent())).findFirst()
@@ -129,7 +117,6 @@ public class MessengerServerWebSocketTest {
         assertEquals("Alice", senderView.getSender());
         assertEquals("Alice", receiverView.getSender());
 
-        // Timestamp set server-side (non-zero, recent, and consistent across broadcast copies)
         long now = System.currentTimeMillis();
         assertTrue(senderView.getTimestamp() > 0, "Timestamp not set by server");
         assertTrue(now - senderView.getTimestamp() < 8000, "Timestamp too old");

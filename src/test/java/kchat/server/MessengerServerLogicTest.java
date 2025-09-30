@@ -9,11 +9,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Deterministic unit tests for core server logic that do NOT rely on
- * actual network sockets. They assert that any change in welcome/leave
- * message text, timestamp assignment, or broadcast behavior will fail.
- */
 public class MessengerServerLogicTest {
 
     private static class CapturingServer extends MessengerServer {
@@ -21,7 +16,6 @@ public class MessengerServerLogicTest {
         CapturingServer() { super(12345); /* arbitrary unused port (won't be started) */ }
         @Override
         protected void broadcast(Message message) {
-            // Just capture instead of sending over network
             broadcasts.add(message);
         }
         List<Message> getBroadcasts() { return broadcasts; }

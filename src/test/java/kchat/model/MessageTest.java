@@ -29,12 +29,10 @@ public class MessageTest {
 
     @Test
     void testGettersAndSetters() {
-        // Test setters
         message.setSender("NewUser");
         message.setContent("New message content");
         message.setTimestamp(12345L);
 
-        // Test getters
         assertEquals("NewUser", message.getSender());
         assertEquals("New message content", message.getContent());
         assertEquals(12345L, message.getTimestamp());
@@ -46,13 +44,11 @@ public class MessageTest {
         assertNotNull(result);
         assertTrue(result.contains(testSender));
         assertTrue(result.contains(testContent));
-        // Should contain formatted timestamp
         assertTrue(result.matches("\\[.*\\] " + testSender + ": " + testContent));
     }
 
     @Test
     void testJsonSerialization() throws Exception {
-        // Test serialization to JSON
         String json = objectMapper.writeValueAsString(message);
         assertNotNull(json);
         assertTrue(json.contains("\"sender\":\"" + testSender + "\""));
@@ -62,7 +58,6 @@ public class MessageTest {
 
     @Test
     void testJsonDeserialization() throws Exception {
-        // Test deserialization from JSON
         String json = String.format(
             "{\"sender\":\"%s\",\"content\":\"%s\",\"timestamp\":%d}",
             testSender, testContent, testTimestamp
@@ -78,7 +73,6 @@ public class MessageTest {
 
     @Test
     void testJsonRoundTrip() throws Exception {
-        // Test complete serialization/deserialization cycle
         String json = objectMapper.writeValueAsString(message);
         Message roundTripMessage = objectMapper.readValue(json, Message.class);
 
