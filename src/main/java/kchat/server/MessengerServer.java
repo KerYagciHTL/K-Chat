@@ -25,18 +25,14 @@ public class MessengerServer extends WebSocketServer {
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         connections.add(conn);
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
-
-        Message welcomeMessage = new Message("Server", "User joined the chat", System.currentTimeMillis());
-        broadcast(welcomeMessage);
+        broadcast(createWelcomeMessage());
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         connections.remove(conn);
         System.out.println("Connection closed: " + conn.getRemoteSocketAddress());
-
-        Message leaveMessage = new Message("Server", "User left the chat", System.currentTimeMillis());
-        broadcast(leaveMessage);
+        broadcast(createLeaveMessage());
     }
 
     @Override
@@ -44,11 +40,8 @@ public class MessengerServer extends WebSocketServer {
         try {
             Message msg = objectMapper.readValue(message, Message.class);
             msg.setTimestamp(System.currentTimeMillis()); // Server sets timestamp
-
             System.out.println("Received message: " + msg.getContent() + " from " + msg.getSender());
-
             broadcast(msg);
-
         } catch (Exception e) {
             System.err.println("Error processing message: " + e.getMessage());
         }
@@ -67,11 +60,18 @@ public class MessengerServer extends WebSocketServer {
         System.out.println("Messenger Server started successfully!");
     }
 
-    private void broadcast(Message message) {
+    // Visible for subclasses/tests
+    protected Message createWelcomeMessage() {
+        return new Message("Server", "User joined the chat", System.currentTimeMillis());
+    }
+
+    protected Message createLeaveMessage() {
+        return new Message("Server", "User left the chat", System.currentTimeMillis());
+    }
+
+    protected void broadcast(Message message) {
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
-
-            // Send to all connected clients
             for (WebSocket conn : connections) {
                 if (conn.isOpen()) {
                     conn.send(jsonMessage);
@@ -84,5 +84,12 @@ public class MessengerServer extends WebSocketServer {
 
     public int getConnectionCount() {
         return connections.size();
+    }
+
+    // Package-private for test visibility: parses raw JSON into a Message and applies server timestamp logic
+    Message processIncomingRawJson(String rawJson) throws java.io.IOException {
+        Message msg = objectMapper.readValue(rawJson, Message.class);
+        msg.setTimestamp(System.currentTimeMillis());
+        return msg;
     }
 }
