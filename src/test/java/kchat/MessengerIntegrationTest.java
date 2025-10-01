@@ -7,11 +7,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.net.URI;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-
 public class MessengerIntegrationTest {
 
     private MessengerServer server;
@@ -39,10 +34,8 @@ public class MessengerIntegrationTest {
         assertDoesNotThrow(() -> {
             server.start();
             Thread.sleep(200);
-
             assertTrue(server.getAddress() != null);
             assertEquals(TEST_PORT, server.getAddress().getPort());
-
             server.stop();
             Thread.sleep(200);
         });
@@ -51,11 +44,9 @@ public class MessengerIntegrationTest {
     @Test
     void testMessageCreationAndSerialization() throws Exception {
         Message message = new Message("TestUser", "Hello Integration Test!", System.currentTimeMillis());
-
         assertNotNull(message);
         assertEquals("TestUser", message.getSender());
         assertEquals("Hello Integration Test!", message.getContent());
-
         String messageString = message.toString();
         assertTrue(messageString.contains("TestUser"));
         assertTrue(messageString.contains("Hello Integration Test!"));
@@ -65,18 +56,15 @@ public class MessengerIntegrationTest {
     void testMultipleServerInstances() throws Exception {
         MessengerServer server2 = new MessengerServer(TEST_PORT + 1);
         MessengerServer server3 = new MessengerServer(TEST_PORT + 2);
-
         try {
             assertNotNull(server2);
             assertNotNull(server3);
-
             assertEquals(TEST_PORT, server.getAddress().getPort());
             assertEquals(TEST_PORT + 1, server2.getAddress().getPort());
             assertEquals(TEST_PORT + 2, server3.getAddress().getPort());
-
         } finally {
-            try { if (server2 != null) server2.stop(); } catch (Exception e) { /* ignore */ }
-            try { if (server3 != null) server3.stop(); } catch (Exception e) { /* ignore */ }
+            try { if (server2 != null) server2.stop(); } catch (Exception ignored) {}
+            try { if (server3 != null) server3.stop(); } catch (Exception ignored) {}
         }
     }
 }

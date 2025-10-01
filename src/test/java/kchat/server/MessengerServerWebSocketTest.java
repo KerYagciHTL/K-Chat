@@ -51,7 +51,7 @@ public class MessengerServerWebSocketTest {
         @Override public void onOpen(ServerHandshake handshakedata) { }
         @Override public void onMessage(String message) { try { received.add(MAPPER.readValue(message, Message.class)); } catch (Exception ignored) { } }
         @Override public void onClose(int code, String reason, boolean remote) { }
-        @Override public void onError(Exception ex) { /* swallow to let retries work */ }
+        @Override public void onError(Exception ex) { }
         boolean waitForAtLeast(int expected, long timeoutMillis) throws InterruptedException {
             long deadline = System.currentTimeMillis() + timeoutMillis;
             while (System.currentTimeMillis() < deadline) {
@@ -75,7 +75,7 @@ public class MessengerServerWebSocketTest {
             attempts++;
         }
         fail("Failed to connect client after retries: " + (last != null ? last.getMessage() : "unknown"));
-        return null; // unreachable
+        return null;
     }
 
     @Test
@@ -86,7 +86,7 @@ public class MessengerServerWebSocketTest {
         while (server.getConnectionCount() < 1 && System.currentTimeMillis() < deadline) Thread.sleep(25);
         assertEquals(1, server.getConnectionCount());
         c1.closeBlocking();
-        Thread.sleep(150); // allow onClose
+        Thread.sleep(150);
         assertEquals(0, server.getConnectionCount());
     }
 
@@ -94,34 +94,26 @@ public class MessengerServerWebSocketTest {
     void userMessageBroadcastsToAllConnectedClientsAndTimestampIsServerAssigned() throws Exception {
         TestClient sender = newClient();
         TestClient receiver = newClient();
-
         long deadline = System.currentTimeMillis() + 2500;
         while (server.getConnectionCount() < 2 && System.currentTimeMillis() < deadline) Thread.sleep(25);
-        assertEquals(2, server.getConnectionCount(), "Both clients not registered in time");
-
+        assertEquals(2, server.getConnectionCount());
         sender.getReceived().clear();
         receiver.getReceived().clear();
-
-        Message outgoing = new Message("Alice", "Hello everyone", 0L); // timestamp should be overwritten
+        Message outgoing = new Message("Alice", "Hello everyone", 0L);
         String json = MAPPER.writeValueAsString(outgoing);
         sender.send(json);
-
-        assertTrue(sender.waitForAtLeast(1, 3000), "Sender did not receive broadcast");
-        assertTrue(receiver.waitForAtLeast(1, 3000), "Receiver did not receive broadcast");
-
+        assertTrue(sender.waitForAtLeast(1, 3000));
+        assertTrue(receiver.waitForAtLeast(1, 3000));
         Message senderView = sender.getReceived().stream().filter(m -> "Hello everyone".equals(m.getContent())).findFirst()
             .orElseThrow(() -> new AssertionError("Sender missing user message"));
         Message receiverView = receiver.getReceived().stream().filter(m -> "Hello everyone".equals(m.getContent())).findFirst()
             .orElseThrow(() -> new AssertionError("Receiver missing user message"));
-
         assertEquals("Alice", senderView.getSender());
         assertEquals("Alice", receiverView.getSender());
-
         long now = System.currentTimeMillis();
-        assertTrue(senderView.getTimestamp() > 0, "Timestamp not set by server");
-        assertTrue(now - senderView.getTimestamp() < 8000, "Timestamp too old");
-        assertEquals(senderView.getTimestamp(), receiverView.getTimestamp(), "Broadcast timestamps differ");
-
+        assertTrue(senderView.getTimestamp() > 0);
+        assertTrue(now - senderView.getTimestamp() < 8000);
+        assertEquals(senderView.getTimestamp(), receiverView.getTimestamp());
         sender.closeBlocking();
         receiver.closeBlocking();
     }

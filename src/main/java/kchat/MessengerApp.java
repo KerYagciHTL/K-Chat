@@ -24,7 +24,7 @@ public class MessengerApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
-        Platform.setImplicitExit(true); // ensure FX thread exits when last window closes
+        Platform.setImplicitExit(true);
         int port = DEFAULT_PORT;
 
         boolean startEmbeddedServer = isPortAvailable(port);
@@ -39,7 +39,7 @@ public class MessengerApp extends Application {
                 System.out.println("Embedded server started on port " + port);
             } catch (Exception e) {
                 System.err.println("Failed to start embedded server: " + e.getMessage());
-                server = null; // fallback to client-only
+                server = null;
             }
         }
 
@@ -47,7 +47,6 @@ public class MessengerApp extends Application {
         messengerWindow.show(primaryStage);
 
         primaryStage.setOnCloseRequest(event -> {
-            System.out.println("Primary stage close requested (MessengerApp)");
             if (messengerWindow != null) {
                 messengerWindow.shutdown();
             }
@@ -57,7 +56,6 @@ public class MessengerApp extends Application {
             Platform.exit();
             new Thread(() -> {
                 try { Thread.sleep(150); } catch (InterruptedException ignored) {}
-                System.out.println("Forcing JVM exit");
                 System.exit(0);
             }, "forced-exit-thread").start();
         });
@@ -65,7 +63,6 @@ public class MessengerApp extends Application {
 
     @Override
     public void stop() {
-        System.out.println("Application.stop() invoked (MessengerApp)");
         if (messengerWindow != null) {
             messengerWindow.shutdown();
         }

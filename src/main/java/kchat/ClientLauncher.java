@@ -16,14 +16,12 @@ public class ClientLauncher extends Application {
         messengerWindow.show(primaryStage);
 
         primaryStage.setOnCloseRequest(event -> {
-            System.out.println("Primary stage close requested (ClientLauncher)");
             if (messengerWindow != null) {
                 messengerWindow.shutdown();
             }
             Platform.exit();
             new Thread(() -> {
                 try { Thread.sleep(150); } catch (InterruptedException ignored) {}
-                System.out.println("Forcing JVM exit (client)");
                 System.exit(0);
             }, "forced-exit-thread-client").start();
         });
@@ -31,7 +29,6 @@ public class ClientLauncher extends Application {
 
     @Override
     public void stop() {
-        System.out.println("Application.stop() invoked (ClientLauncher)");
         if (messengerWindow != null) {
             messengerWindow.shutdown();
         }

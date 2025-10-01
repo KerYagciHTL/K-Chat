@@ -29,7 +29,7 @@ public class ServerLauncher {
         if (!isPortAvailable(port)) {
             System.err.println("A server already appears to be running on port " + port + ". Aborting new server start.");
             System.err.println("(If this is unexpected, ensure previous process is terminated.)");
-            return; // Do not start another server
+            return;
         }
 
         MessengerServer server = new MessengerServer(port);

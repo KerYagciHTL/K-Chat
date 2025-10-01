@@ -42,7 +42,7 @@ public class MessengerServer extends WebSocketServer {
     public void onMessage(WebSocket conn, String message) {
         try {
             Message msg = objectMapper.readValue(message, Message.class);
-            msg.setTimestamp(System.currentTimeMillis()); // Server sets timestamp
+            msg.setTimestamp(System.currentTimeMillis());
             System.out.println("Received message: " + msg.getContent() + " from " + msg.getSender());
             broadcast(msg);
         } catch (Exception e) {
@@ -55,7 +55,6 @@ public class MessengerServer extends WebSocketServer {
         System.err.println("WebSocket error: " + ex.getMessage());
         if (conn != null) {
             connections.remove(conn);
-            // Broadcast updated user count when error causes disconnect
             broadcastUserCount();
         }
     }
@@ -63,11 +62,9 @@ public class MessengerServer extends WebSocketServer {
     @Override
     public void onStart() {
         System.out.println("Messenger Server started successfully!");
-        // Set connection lost timeout to detect dead connections faster
         setConnectionLostTimeout(10);
     }
 
-    // Visible for subclasses/tests
     protected Message createWelcomeMessage() {
         return new Message("Server", "User joined the chat", System.currentTimeMillis());
     }
@@ -84,7 +81,6 @@ public class MessengerServer extends WebSocketServer {
     protected void broadcast(Message message) {
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
-            // Create a copy of connections to avoid concurrent modification
             Set<WebSocket> connectionsCopy = new HashSet<>(connections);
             for (WebSocket conn : connectionsCopy) {
                 if (conn.isOpen()) {
@@ -95,7 +91,6 @@ public class MessengerServer extends WebSocketServer {
                         connections.remove(conn);
                     }
                 } else {
-                    // Remove closed connections
                     connections.remove(conn);
                 }
             }

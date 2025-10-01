@@ -14,9 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-/**
- * Deterministic test focusing on user count increment/decrement and USER_COUNT system messages.
- */
 public class MessengerServerUserCountTest {
 
     private MessengerServer server;
@@ -92,17 +89,13 @@ public class MessengerServerUserCountTest {
         assertTrue(c2.waitForUserCount(2, 2000) || c1.waitForUserCount(2, 2000), "No client observed USER_COUNT:2");
         assertEquals(2, server.getConnectionCount());
 
-        // Close second client
         c2.closeBlocking();
         Thread.sleep(120);
-        // Remaining client should eventually see count 1
         assertTrue(c1.waitForUserCount(1, 2000), "Remaining client did not observe USER_COUNT:1 after close");
         assertEquals(1, server.getConnectionCount());
 
-        // Close first client
         c1.closeBlocking();
         Thread.sleep(120);
         assertEquals(0, server.getConnectionCount());
     }
 }
-
