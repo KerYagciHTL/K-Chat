@@ -8,6 +8,7 @@ import kchat.model.Message;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -54,12 +55,16 @@ public class MessengerServer extends WebSocketServer {
         System.err.println("WebSocket error: " + ex.getMessage());
         if (conn != null) {
             connections.remove(conn);
+            // Broadcast updated user count when error causes disconnect
+            broadcastUserCount();
         }
     }
 
     @Override
     public void onStart() {
         System.out.println("Messenger Server started successfully!");
+        // Set connection lost timeout to detect dead connections faster
+        setConnectionLostTimeout(10);
     }
 
     // Visible for subclasses/tests
@@ -79,9 +84,19 @@ public class MessengerServer extends WebSocketServer {
     protected void broadcast(Message message) {
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
-            for (WebSocket conn : connections) {
+            // Create a copy of connections to avoid concurrent modification
+            Set<WebSocket> connectionsCopy = new HashSet<>(connections);
+            for (WebSocket conn : connectionsCopy) {
                 if (conn.isOpen()) {
-                    conn.send(jsonMessage);
+                    try {
+                        conn.send(jsonMessage);
+                    } catch (Exception e) {
+                        System.err.println("Error sending to client, removing connection: " + e.getMessage());
+                        connections.remove(conn);
+                    }
+                } else {
+                    // Remove closed connections
+                    connections.remove(conn);
                 }
             }
         } catch (Exception e) {

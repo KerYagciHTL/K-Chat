@@ -26,6 +26,18 @@ public class MessengerWindow {
     private Label userCountLabel;
     private String currentUsername = "User";
 
+    // Graceful shutdown hook for caller (launchers) to invoke
+    public void shutdown() {
+        System.out.println("MessengerWindow.shutdown(): closing client");
+        if (client != null && !client.isClosed()) {
+            try {
+                client.closeBlocking();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
     public void show(Stage stage) {
         VBox root = createUI();
         Scene scene = new Scene(root, 600, 500);
@@ -33,12 +45,15 @@ public class MessengerWindow {
         stage.setTitle("Simple Messenger");
         stage.setScene(scene);
 
-        // Add close handler to properly disconnect when window is closed
-        stage.setOnCloseRequest(event -> {
+        // Add shutdown hook (fallback if launcher forgets) - won't replace launcher handler
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutdown hook: Closing client connection...");
             if (client != null && !client.isClosed()) {
-                client.close();
+                try { client.closeBlocking(); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             }
-        });
+        }));
+
+        // NOTE: We no longer call stage.setOnCloseRequest here to avoid overwriting application-level handlers.
 
         stage.show();
 
