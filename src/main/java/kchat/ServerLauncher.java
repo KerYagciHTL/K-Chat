@@ -2,8 +2,18 @@ package kchat;
 
 import kchat.server.MessengerServer;
 import java.util.Scanner;
+import java.net.ServerSocket;
 
 public class ServerLauncher {
+    private static boolean isPortAvailable(int port) {
+        try (ServerSocket socket = new ServerSocket(port)) {
+            socket.setReuseAddress(true);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public static void main(String[] args) {
         int port = 8080;
 
@@ -16,8 +26,19 @@ public class ServerLauncher {
             }
         }
 
+        if (!isPortAvailable(port)) {
+            System.err.println("A server already appears to be running on port " + port + ". Aborting new server start.");
+            System.err.println("(If this is unexpected, ensure previous process is terminated.)");
+            return; // Do not start another server
+        }
+
         MessengerServer server = new MessengerServer(port);
-        server.start();
+        try {
+            server.start();
+        } catch (Exception e) {
+            System.err.println("Failed to start server: " + e.getMessage());
+            return;
+        }
 
         System.out.println("Messenger server started on port " + port);
         System.out.println("Press Enter to stop the server...");
@@ -28,11 +49,7 @@ public class ServerLauncher {
             System.out.println("Server stopped.");
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
-            try {
-                server.stop();
-            } catch (Exception stopException) {
-                System.err.println("Error stopping server: " + stopException.getMessage());
-            }
+            try { server.stop(); } catch (Exception stopException) { System.err.println("Error stopping server: " + stopException.getMessage()); }
         }
     }
 }
