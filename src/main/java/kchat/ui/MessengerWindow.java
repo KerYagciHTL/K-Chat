@@ -23,6 +23,7 @@ public class MessengerWindow {
     private Button sendButton;
     private Button connectButton;
     private Label statusLabel;
+    private Label userCountLabel;
     private String currentUsername = "User";
 
     public void show(Stage stage) {
@@ -31,6 +32,14 @@ public class MessengerWindow {
 
         stage.setTitle("Simple Messenger");
         stage.setScene(scene);
+
+        // Add close handler to properly disconnect when window is closed
+        stage.setOnCloseRequest(event -> {
+            if (client != null && !client.isClosed()) {
+                client.close();
+            }
+        });
+
         stage.show();
 
         connectToServer();
@@ -40,10 +49,7 @@ public class MessengerWindow {
         VBox root = new VBox(10);
         root.setPadding(new Insets(10));
 
-        HBox connectionPanel = createConnectionPanel();
-
-        statusLabel = new Label("Disconnected");
-        statusLabel.setStyle("-fx-text-fill: red;");
+        VBox topPanel = createTopPanel();
 
         messageArea = new TextArea();
         messageArea.setEditable(false);
@@ -53,8 +59,31 @@ public class MessengerWindow {
 
         HBox inputPanel = createInputPanel();
 
-        root.getChildren().addAll(connectionPanel, statusLabel, messageArea, inputPanel);
+        root.getChildren().addAll(topPanel, messageArea, inputPanel);
         return root;
+    }
+
+    private VBox createTopPanel() {
+        VBox topPanel = new VBox(5);
+
+        HBox connectionPanel = createConnectionPanel();
+
+        HBox statusPanel = new HBox();
+        statusPanel.setAlignment(Pos.CENTER_LEFT);
+
+        statusLabel = new Label("Disconnected");
+        statusLabel.setStyle("-fx-text-fill: red;");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        userCountLabel = new Label("Users: 0");
+        userCountLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2196F3;");
+
+        statusPanel.getChildren().addAll(statusLabel, spacer, userCountLabel);
+
+        topPanel.getChildren().addAll(connectionPanel, statusPanel);
+        return topPanel;
     }
 
     private HBox createConnectionPanel() {
@@ -141,6 +170,18 @@ public class MessengerWindow {
 
     private void handleIncomingMessage(Message message) {
         Platform.runLater(() -> {
+            // Handle user count updates
+            if ("System".equals(message.getSender()) && message.getContent().startsWith("USER_COUNT:")) {
+                String countStr = message.getContent().substring("USER_COUNT:".length());
+                try {
+                    int userCount = Integer.parseInt(countStr);
+                    userCountLabel.setText("Users: " + userCount);
+                } catch (NumberFormatException e) {
+                    System.err.println("Error parsing user count: " + countStr);
+                }
+                return; // Don't display system messages in chat
+            }
+
             SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
             String timestamp = timeFormat.format(new Date(message.getTimestamp()));
             String formattedMessage = String.format("[%s] %s: %s",

@@ -26,6 +26,7 @@ public class MessengerServer extends WebSocketServer {
         connections.add(conn);
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
         broadcast(createWelcomeMessage());
+        broadcastUserCount();
     }
 
     @Override
@@ -33,6 +34,7 @@ public class MessengerServer extends WebSocketServer {
         connections.remove(conn);
         System.out.println("Connection closed: " + conn.getRemoteSocketAddress());
         broadcast(createLeaveMessage());
+        broadcastUserCount();
     }
 
     @Override
@@ -67,6 +69,11 @@ public class MessengerServer extends WebSocketServer {
 
     protected Message createLeaveMessage() {
         return new Message("Server", "User left the chat", System.currentTimeMillis());
+    }
+
+    private void broadcastUserCount() {
+        Message userCountMessage = new Message("System", "USER_COUNT:" + getConnectionCount(), System.currentTimeMillis());
+        broadcast(userCountMessage);
     }
 
     protected void broadcast(Message message) {
