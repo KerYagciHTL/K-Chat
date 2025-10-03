@@ -5,12 +5,15 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import kchat.model.Message;
+import kchat.security.SecurityConfig;
+import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.net.ssl.SSLContext;
 
 public class MessengerServer extends WebSocketServer {
 
@@ -20,6 +23,12 @@ public class MessengerServer extends WebSocketServer {
     public MessengerServer(int port) {
         super(new InetSocketAddress(port));
         System.out.println("Messenger Server initialized on port " + port);
+        // Optional TLS enablement
+        SSLContext sslContext = SecurityConfig.loadServerSslContextIfEnabled();
+        if (sslContext != null) {
+            setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
+            System.out.println("Messenger Server running with TLS (wss)");
+        }
     }
 
     @Override

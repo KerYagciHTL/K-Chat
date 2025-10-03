@@ -9,6 +9,7 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 import kchat.MessengerClient;
 import kchat.model.Message;
+import kchat.security.CryptoUtils;
 
 import java.net.URI;
 import java.text.SimpleDateFormat;
@@ -20,6 +21,7 @@ public class MessengerWindow {
     private TextArea messageArea;
     private TextField messageInput;
     private TextField usernameField;
+    private PasswordField secretField;
     private Button sendButton;
     private Button connectButton;
     private Label statusLabel;
@@ -38,7 +40,7 @@ public class MessengerWindow {
 
     public void show(Stage stage) {
         VBox root = createUI();
-        Scene scene = new Scene(root, 600, 500);
+        Scene scene = new Scene(root, 600, 520);
         stage.setTitle("Simple Messenger");
         stage.setScene(scene);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -85,10 +87,14 @@ public class MessengerWindow {
         panel.setAlignment(Pos.CENTER_LEFT);
         Label usernameLabel = new Label("Username:");
         usernameField = new TextField(currentUsername);
-        usernameField.setPrefWidth(150);
+        usernameField.setPrefWidth(120);
+        Label secretLabel = new Label("Secret:");
+        secretField = new PasswordField();
+        secretField.setPromptText("(optional shared key)");
+        secretField.setPrefWidth(150);
         connectButton = new Button("Connect");
         connectButton.setOnAction(e -> connectToServer());
-        panel.getChildren().addAll(usernameLabel, usernameField, connectButton);
+        panel.getChildren().addAll(usernameLabel, usernameField, secretLabel, secretField, connectButton);
         return panel;
     }
 
@@ -116,13 +122,21 @@ public class MessengerWindow {
                 currentUsername = "User";
                 usernameField.setText(currentUsername);
             }
+            String secret = secretField.getText();
+            if (secret != null && !secret.isEmpty()) {
+                CryptoUtils.setPassphrase(secret);
+            } else {
+                CryptoUtils.clearPassphrase();
+            }
             if (client != null && !client.isClosed()) {
                 client.close();
             }
-            URI serverUri = new URI("ws://localhost:8080");
+            String scheme = Boolean.getBoolean("kchat.ssl") ? "wss" : "ws";
+            URI serverUri = new URI(scheme + "://localhost:8080");
             client = new MessengerClient(serverUri);
             client.setMessageHandler(this::handleIncomingMessage);
             client.setConnectionStatusHandler(this::updateConnectionStatus);
+            client.setEncryptionEnabled(secret != null && !secret.isEmpty());
             client.connect();
             updateConnectionStatus("Connecting...");
         } catch (Exception e) {
@@ -167,12 +181,17 @@ public class MessengerWindow {
     private void updateConnectionStatus(String status) {
         Platform.runLater(() -> {
             statusLabel.setText("Status: " + status);
-            if (status.equals("Connected")) {
+            if (status.startsWith("Connected")) {
                 statusLabel.setStyle("-fx-text-fill: green;");
                 messageInput.setDisable(false);
                 sendButton.setDisable(false);
                 connectButton.setText("Reconnect");
                 messageInput.requestFocus();
+            } else if (status.startsWith("Connecting")) {
+                statusLabel.setStyle("-fx-text-fill: orange;");
+                messageInput.setDisable(true);
+                sendButton.setDisable(true);
+                connectButton.setText("Connect");
             } else {
                 statusLabel.setStyle("-fx-text-fill: red;");
                 messageInput.setDisable(true);
