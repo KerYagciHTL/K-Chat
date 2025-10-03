@@ -133,8 +133,13 @@ public class MessengerWindow {
             if (client != null && !client.isClosed()) {
                 try { client.close(); } catch (Exception ignore) {}
             }
+            int port = 8080;
+            if (!isServerReachable("localhost", port, 700)) {
+                updateConnectionStatus("Error: server not reachable on port " + port);
+                return;
+            }
             String scheme = Boolean.getBoolean("kchat.ssl") ? "wss" : "ws";
-            URI serverUri = new URI(scheme + "://localhost:8080");
+            URI serverUri = new URI(scheme + "://localhost:" + port);
             client = new MessengerClient(serverUri);
             client.setTargetServerId(enteredServerId);
             client.setMessageHandler(this::handleIncomingMessage);
@@ -144,6 +149,15 @@ public class MessengerWindow {
         } catch (Exception e) {
             updateConnectionStatus("Connection failed: " + e.getMessage());
             System.err.println("Connection error: " + e.getMessage());
+        }
+    }
+
+    private boolean isServerReachable(String host, int port, int timeoutMs) {
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress(host, port), timeoutMs);
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -185,26 +199,31 @@ public class MessengerWindow {
             statusLabel.setText("Status: " + status);
             boolean connected = status.startsWith("Connected");
             boolean working = status.startsWith("Connecting") || status.contains("Handshake");
+            boolean error = status.startsWith("Error");
             if (connected) {
                 statusLabel.setStyle("-fx-text-fill: green;");
                 messageInput.setDisable(false);
                 sendButton.setDisable(false);
                 connectButton.setText("Reconnect");
+                serverIdField.setStyle("");
             } else if (working) {
                 statusLabel.setStyle("-fx-text-fill: orange;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
                 connectButton.setText("Connect");
-            } else if (status.startsWith("Error")) {
+                serverIdField.setStyle("");
+            } else if (error) {
                 statusLabel.setStyle("-fx-text-fill: #d32f2f;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
                 connectButton.setText("Retry");
+                serverIdField.setStyle("-fx-border-color: #d32f2f; -fx-border-width: 1.5; -fx-focus-color: #d32f2f; -fx-faint-focus-color: transparent;");
             } else {
                 statusLabel.setStyle("-fx-text-fill: red;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
                 connectButton.setText("Connect");
+                serverIdField.setStyle("");
             }
         });
     }

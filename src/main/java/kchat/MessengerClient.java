@@ -16,6 +16,7 @@ import java.net.URI;
 import java.security.KeyPair;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.concurrent.*;
 import java.util.function.Consumer;
 
 public class MessengerClient extends WebSocketClient {
@@ -30,6 +31,10 @@ public class MessengerClient extends WebSocketClient {
     private KeyPair clientKeyPair;
     private boolean handshakeComplete = false;
     private static final SecureRandom RANDOM = new SecureRandom();
+    private static final ScheduledExecutorService HS_EXEC = Executors.newSingleThreadScheduledExecutor(r -> { Thread t = new Thread(r, "kchat-handshake-timer"); t.setDaemon(true); return t; });
+    private ScheduledFuture<?> handshakeTimeoutFuture;
+    private static final long HANDSHAKE_TIMEOUT_MS = 5000L;
+    private volatile boolean errorSet = false;
 
     public MessengerClient(URI serverUri) {
         super(serverUri);
@@ -55,6 +60,7 @@ public class MessengerClient extends WebSocketClient {
             Message hello = new Message("Client", "HELLO:" + targetServerId + ":" + pubB64, System.currentTimeMillis());
             send(objectMapper.writeValueAsString(hello));
             updateStatus("Handshake sent");
+            scheduleHandshakeTimeout();
         } catch (Exception e) {
             failStatus("Handshake init failed: " + e.getMessage());
             close();
@@ -80,6 +86,16 @@ public class MessengerClient extends WebSocketClient {
         } catch (Exception e) {
             System.err.println("Error parsing message: " + e.getMessage());
         }
+    }
+
+    private void scheduleHandshakeTimeout() {
+        if (handshakeTimeoutFuture != null) handshakeTimeoutFuture.cancel(true);
+        handshakeTimeoutFuture = HS_EXEC.schedule(() -> {
+            if (!handshakeComplete) {
+                failStatus("Handshake timeout");
+                try { close(); } catch (Exception ignore) {}
+            }
+        }, HANDSHAKE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     private void handleWelcome(String content) {
@@ -109,6 +125,7 @@ public class MessengerClient extends WebSocketClient {
             }
             CryptoUtils.setRawKey(groupKey);
             handshakeComplete = true;
+            if (handshakeTimeoutFuture != null) handshakeTimeoutFuture.cancel(true);
             setEncryptionEnabled(true);
             updateStatus("Connected (Secured)");
         } catch (Exception e) {
@@ -136,9 +153,23 @@ public class MessengerClient extends WebSocketClient {
     @Override
     public void onClose(int code, String reason, boolean remote) {
         System.out.println("Connection closed: " + reason);
+        if (handshakeTimeoutFuture != null) handshakeTimeoutFuture.cancel(true);
+        if (!handshakeComplete && !errorSet) {
+            String r = reason == null ? "" : reason.toLowerCase();
+            if (r.contains("invalid serverid")) {
+                failStatus("Invalid server ID");
+            } else if (r.contains("handshake")) {
+                failStatus("Handshake failed");
+            } else if (!r.isEmpty()) {
+                failStatus("Closed before handshake: " + reason);
+            } else {
+                failStatus("Server ID not accepted");
+            }
+        } else if (!errorSet) {
+            if (connectionStatusHandler != null) connectionStatusHandler.accept("Disconnected");
+        }
         handshakeComplete = false;
         encryptionEnabled = false;
-        if (connectionStatusHandler != null) connectionStatusHandler.accept("Disconnected");
     }
 
     @Override
@@ -167,5 +198,8 @@ public class MessengerClient extends WebSocketClient {
     public void setEncryptionEnabled(boolean enabled) { this.encryptionEnabled = enabled && CryptoUtils.isEnabled(); }
 
     private void updateStatus(String status) { if (connectionStatusHandler != null) connectionStatusHandler.accept(status); }
-    private void failStatus(String status) { if (connectionStatusHandler != null) connectionStatusHandler.accept("Error: " + status); }
+    private void failStatus(String status) {
+        errorSet = true;
+        if (connectionStatusHandler != null) connectionStatusHandler.accept("Error: " + status);
+    }
 }
