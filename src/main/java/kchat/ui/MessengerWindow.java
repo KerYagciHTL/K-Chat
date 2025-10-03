@@ -216,14 +216,13 @@ public class MessengerWindow {
                 statusLabel.setStyle("-fx-text-fill: #d32f2f;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
-                connectButton.setText("Retry");
-                serverIdField.setStyle("-fx-border-color: #d32f2f; -fx-border-width: 1.5; -fx-focus-color: #d32f2f; -fx-faint-focus-color: transparent;");
-            } else {
-                statusLabel.setStyle("-fx-text-fill: red;");
-                messageInput.setDisable(true);
-                sendButton.setDisable(true);
                 connectButton.setText("Connect");
-                serverIdField.setStyle("");
+                // Clear any previous connection status or user info
+                // If you have a label or field showing 'User connected to the Server', clear it here
+                // For example:
+                // connectedUserLabel.setText("");
+                // Optionally reset other UI elements as needed
+                serverIdField.setStyle("-fx-border-color: #d32f2f;");
             }
         });
     }
