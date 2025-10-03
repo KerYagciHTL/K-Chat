@@ -21,6 +21,7 @@ public class MessengerWindow {
     private TextArea messageArea;
     private TextField messageInput;
     private TextField usernameField;
+    private TextField serverIdField; // new field for server ID
     private Button sendButton;
     private Button connectButton;
     private Label statusLabel;
@@ -39,7 +40,7 @@ public class MessengerWindow {
 
     public void show(Stage stage) {
         VBox root = createUI();
-        Scene scene = new Scene(root, 600, 520);
+        Scene scene = new Scene(root, 640, 520);
         stage.setTitle("Simple Messenger");
         stage.setScene(scene);
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -48,7 +49,8 @@ public class MessengerWindow {
             }
         }));
         stage.show();
-        connectToServer();
+        // Removed auto-connect: user must supply server ID and click Connect
+        updateConnectionStatus("Disconnected");
     }
 
     private VBox createUI() {
@@ -87,9 +89,15 @@ public class MessengerWindow {
         Label usernameLabel = new Label("Username:");
         usernameField = new TextField(currentUsername);
         usernameField.setPrefWidth(120);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        Label serverIdLabel = new Label("Server ID:");
+        serverIdField = new TextField();
+        serverIdField.setPromptText("Paste server id");
+        serverIdField.setPrefWidth(240);
         connectButton = new Button("Connect");
         connectButton.setOnAction(e -> connectToServer());
-        panel.getChildren().addAll(usernameLabel, usernameField, connectButton);
+        panel.getChildren().addAll(usernameLabel, usernameField, spacer, serverIdLabel, serverIdField, connectButton);
         return panel;
     }
 
@@ -112,28 +120,27 @@ public class MessengerWindow {
 
     private void connectToServer() {
         try {
+            String enteredServerId = serverIdField.getText() == null ? "" : serverIdField.getText().trim();
+            if (enteredServerId.isEmpty()) {
+                updateConnectionStatus("Error: serverId required");
+                return;
+            }
             currentUsername = usernameField.getText().trim();
             if (currentUsername.isEmpty()) {
                 currentUsername = "User";
                 usernameField.setText(currentUsername);
             }
-            String secret = System.getProperty("kchat.secret");
-            if (secret != null && !secret.isEmpty()) {
-                CryptoUtils.setPassphrase(secret);
-            } else {
-                CryptoUtils.clearPassphrase();
-            }
             if (client != null && !client.isClosed()) {
-                client.close();
+                try { client.close(); } catch (Exception ignore) {}
             }
             String scheme = Boolean.getBoolean("kchat.ssl") ? "wss" : "ws";
             URI serverUri = new URI(scheme + "://localhost:8080");
             client = new MessengerClient(serverUri);
+            client.setTargetServerId(enteredServerId);
             client.setMessageHandler(this::handleIncomingMessage);
             client.setConnectionStatusHandler(this::updateConnectionStatus);
-            client.setEncryptionEnabled(CryptoUtils.isEnabled());
             client.connect();
-            updateConnectionStatus("Connecting...");
+            updateConnectionStatus("Connecting (socket)...");
         } catch (Exception e) {
             updateConnectionStatus("Connection failed: " + e.getMessage());
             System.err.println("Connection error: " + e.getMessage());
@@ -176,17 +183,23 @@ public class MessengerWindow {
     private void updateConnectionStatus(String status) {
         Platform.runLater(() -> {
             statusLabel.setText("Status: " + status);
-            if (status.startsWith("Connected")) {
+            boolean connected = status.startsWith("Connected");
+            boolean working = status.startsWith("Connecting") || status.contains("Handshake");
+            if (connected) {
                 statusLabel.setStyle("-fx-text-fill: green;");
                 messageInput.setDisable(false);
                 sendButton.setDisable(false);
                 connectButton.setText("Reconnect");
-                messageInput.requestFocus();
-            } else if (status.startsWith("Connecting")) {
+            } else if (working) {
                 statusLabel.setStyle("-fx-text-fill: orange;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
                 connectButton.setText("Connect");
+            } else if (status.startsWith("Error")) {
+                statusLabel.setStyle("-fx-text-fill: #d32f2f;");
+                messageInput.setDisable(true);
+                sendButton.setDisable(true);
+                connectButton.setText("Retry");
             } else {
                 statusLabel.setStyle("-fx-text-fill: red;");
                 messageInput.setDisable(true);

@@ -7,23 +7,39 @@ import org.java_websocket.server.WebSocketServer;
 import kchat.model.Message;
 import kchat.security.SecurityConfig;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
+import kchat.security.KeyExchangeUtil;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
+import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.net.ssl.SSLContext;
+import javax.crypto.Cipher;
+import javax.crypto.spec.GCMParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
 
 public class MessengerServer extends WebSocketServer {
 
     private final Set<WebSocket> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // Security / handshake fields
+    private final String serverId = UUID.randomUUID().toString();
+    private final KeyPair serverKeyPair = KeyExchangeUtil.generateKeyPair(); // X25519
+    private final byte[] groupKey = new byte[32]; // shared symmetric key for all clients
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     public MessengerServer(int port) {
         super(new InetSocketAddress(port));
-        System.out.println("Messenger Server initialized on port " + port);
-        // Optional TLS enablement
+        RANDOM.nextBytes(groupKey);
+        System.out.println("Messenger Server initialized on port " + port + " (serverId=" + serverId + ")");
         SSLContext sslContext = SecurityConfig.loadServerSslContextIfEnabled();
         if (sslContext != null) {
             setWebSocketFactory(new DefaultSSLWebSocketServerFactory(sslContext));
@@ -31,10 +47,13 @@ public class MessengerServer extends WebSocketServer {
         }
     }
 
+    public String getServerId() { return serverId; }
+
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         connections.add(conn);
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
+        // Maintain legacy behavior for tests / existing clients
         broadcast(createWelcomeMessage());
         broadcastUserCount();
     }
@@ -51,12 +70,55 @@ public class MessengerServer extends WebSocketServer {
     public void onMessage(WebSocket conn, String message) {
         try {
             Message msg = objectMapper.readValue(message, Message.class);
+            String content = msg.getContent();
+            if (content != null && content.startsWith("HELLO:")) {
+                handleHello(conn, msg);
+                return; // do not broadcast handshake messages
+            }
             msg.setTimestamp(System.currentTimeMillis());
             System.out.println("Received message: " + msg.getContent() + " from " + msg.getSender());
             broadcast(msg);
         } catch (Exception e) {
             System.err.println("Error processing message: " + e.getMessage());
         }
+    }
+
+    private void handleHello(WebSocket conn, Message msg) {
+        try {
+            // Format: HELLO:serverId:clientPubB64
+            String[] parts = msg.getContent().split(":", 3);
+            if (parts.length < 3) {
+                System.err.println("Malformed HELLO message");
+                return;
+            }
+            String claimedServerId = parts[1];
+            if (!serverId.equals(claimedServerId)) {
+                System.err.println("Client claimed wrong serverId: " + claimedServerId);
+                conn.close(1002, "Invalid serverId");
+                return;
+            }
+            byte[] clientPubRaw = Base64.getDecoder().decode(parts[2]);
+            byte[] sharedSecret = KeyExchangeUtil.deriveSharedSecret(serverKeyPair.getPrivate(), clientPubRaw);
+            byte[] keyWrapKey = KeyExchangeUtil.hkdf(sharedSecret, serverId.getBytes(StandardCharsets.UTF_8), "kchat-handshake".getBytes(StandardCharsets.UTF_8), 32);
+            String wrapped = wrapGroupKey(keyWrapKey);
+            String serverPubB64 = Base64.getEncoder().encodeToString(serverKeyPair.getPublic().getEncoded());
+            Message resp = new Message("System", "WELCOME:" + serverId + ":" + serverPubB64 + ":" + wrapped, System.currentTimeMillis());
+            conn.send(objectMapper.writeValueAsString(resp));
+        } catch (Exception e) {
+            System.err.println("Handshake error: " + e.getMessage());
+            try { conn.close(1011, "Handshake failure"); } catch (Exception ignore) {}
+        }
+    }
+
+    private String wrapGroupKey(byte[] keyWrapKey) throws Exception {
+        byte[] iv = new byte[12];
+        RANDOM.nextBytes(iv);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(keyWrapKey, "AES"), new GCMParameterSpec(128, iv));
+        byte[] ct = cipher.doFinal(groupKey);
+        ByteBuffer bb = ByteBuffer.allocate(iv.length + ct.length);
+        bb.put(iv).put(ct);
+        return Base64.getEncoder().encodeToString(bb.array());
     }
 
     @Override
