@@ -74,7 +74,7 @@ src/main/java/kchat/
 | Command | Server | GUI Client | Use Case |
 |---------|--------|------------|----------|
 | `./gradlew run` | ✅ Starts | ✅ Starts | Development, single-user testing |
-| `./gradlew runServer` | ✅ Starts | ❌ None | Dedicated server hosting |  
+| `./gradlew runServer` | ✅ Starts | ❌ None | Dedicated server hosting |
 | `./gradlew runClient` | ❌ None | ✅ Starts | Connect to existing server |
 
 ### Testing with Multiple Clients
@@ -194,3 +194,4 @@ src/test/java/kchat/
 
 ## Security Notice
 This project adds optional encryption for educational purposes. Do NOT rely on it for real confidential data. For production-grade secure messaging you'd need robust key exchange (e.g., X3DH/Double Ratchet), forward secrecy, authenticated participant management, certificate validation hardening, replay protection, and more.
+

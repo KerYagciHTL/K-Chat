@@ -21,7 +21,6 @@ public class MessengerWindow {
     private TextArea messageArea;
     private TextField messageInput;
     private TextField usernameField;
-    private PasswordField secretField;
     private Button sendButton;
     private Button connectButton;
     private Label statusLabel;
@@ -88,13 +87,9 @@ public class MessengerWindow {
         Label usernameLabel = new Label("Username:");
         usernameField = new TextField(currentUsername);
         usernameField.setPrefWidth(120);
-        Label secretLabel = new Label("Secret:");
-        secretField = new PasswordField();
-        secretField.setPromptText("(optional shared key)");
-        secretField.setPrefWidth(150);
         connectButton = new Button("Connect");
         connectButton.setOnAction(e -> connectToServer());
-        panel.getChildren().addAll(usernameLabel, usernameField, secretLabel, secretField, connectButton);
+        panel.getChildren().addAll(usernameLabel, usernameField, connectButton);
         return panel;
     }
 
@@ -122,7 +117,7 @@ public class MessengerWindow {
                 currentUsername = "User";
                 usernameField.setText(currentUsername);
             }
-            String secret = secretField.getText();
+            String secret = System.getProperty("kchat.secret");
             if (secret != null && !secret.isEmpty()) {
                 CryptoUtils.setPassphrase(secret);
             } else {
@@ -136,7 +131,7 @@ public class MessengerWindow {
             client = new MessengerClient(serverUri);
             client.setMessageHandler(this::handleIncomingMessage);
             client.setConnectionStatusHandler(this::updateConnectionStatus);
-            client.setEncryptionEnabled(secret != null && !secret.isEmpty());
+            client.setEncryptionEnabled(CryptoUtils.isEnabled());
             client.connect();
             updateConnectionStatus("Connecting...");
         } catch (Exception e) {
