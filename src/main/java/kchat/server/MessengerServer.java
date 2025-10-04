@@ -28,6 +28,7 @@ import javax.crypto.spec.SecretKeySpec;
 public class MessengerServer extends WebSocketServer {
 
     private final Set<WebSocket> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<WebSocket> authenticatedConnections = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Security / handshake fields
@@ -53,17 +54,20 @@ public class MessengerServer extends WebSocketServer {
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         connections.add(conn);
         System.out.println("New connection: " + conn.getRemoteSocketAddress());
-        // Maintain legacy behavior for tests / existing clients
-        broadcast(createWelcomeMessage());
-        broadcastUserCount();
+        // Don't broadcast anything until authentication is complete
     }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         connections.remove(conn);
+        boolean wasAuthenticated = authenticatedConnections.remove(conn);
         System.out.println("Connection closed: " + conn.getRemoteSocketAddress());
-        broadcast(createLeaveMessage());
-        broadcastUserCount();
+
+        // Only broadcast leave message and update user count if the user was properly authenticated
+        if (wasAuthenticated) {
+            broadcastToAuthenticated(createLeaveMessage());
+            broadcastUserCountToAuthenticated();
+        }
     }
 
     @Override
@@ -75,9 +79,16 @@ public class MessengerServer extends WebSocketServer {
                 handleHello(conn, msg);
                 return; // do not broadcast handshake messages
             }
+
+            // Only process regular messages from authenticated clients
+            if (!authenticatedConnections.contains(conn)) {
+                System.err.println("Ignoring message from unauthenticated client");
+                return;
+            }
+
             msg.setTimestamp(System.currentTimeMillis());
             System.out.println("Received message: " + msg.getContent() + " from " + msg.getSender());
-            broadcast(msg);
+            broadcastToAuthenticated(msg);
         } catch (Exception e) {
             System.err.println("Error processing message: " + e.getMessage());
         }
@@ -89,6 +100,7 @@ public class MessengerServer extends WebSocketServer {
             String[] parts = msg.getContent().split(":", 3);
             if (parts.length < 3) {
                 System.err.println("Malformed HELLO message");
+                conn.close(1002, "Malformed handshake");
                 return;
             }
             String claimedServerId = parts[1];
@@ -97,6 +109,10 @@ public class MessengerServer extends WebSocketServer {
                 conn.close(1002, "Invalid serverId");
                 return;
             }
+
+            // Authentication successful - add to authenticated connections
+            authenticatedConnections.add(conn);
+
             byte[] clientPubRaw = Base64.getDecoder().decode(parts[2]);
             byte[] sharedSecret = KeyExchangeUtil.deriveSharedSecret(serverKeyPair.getPrivate(), clientPubRaw);
             byte[] keyWrapKey = KeyExchangeUtil.hkdf(sharedSecret, serverId.getBytes(StandardCharsets.UTF_8), "kchat-handshake".getBytes(StandardCharsets.UTF_8), 32);
@@ -104,6 +120,11 @@ public class MessengerServer extends WebSocketServer {
             String serverPubB64 = Base64.getEncoder().encodeToString(serverKeyPair.getPublic().getEncoded());
             Message resp = new Message("System", "WELCOME:" + serverId + ":" + serverPubB64 + ":" + wrapped, System.currentTimeMillis());
             conn.send(objectMapper.writeValueAsString(resp));
+
+            // Now broadcast welcome and user count to all authenticated users
+            broadcastToAuthenticated(createWelcomeMessage());
+            broadcastUserCountToAuthenticated();
+
         } catch (Exception e) {
             System.err.println("Handshake error: " + e.getMessage());
             try { conn.close(1011, "Handshake failure"); } catch (Exception ignore) {}
@@ -126,7 +147,8 @@ public class MessengerServer extends WebSocketServer {
         System.err.println("WebSocket error: " + ex.getMessage());
         if (conn != null) {
             connections.remove(conn);
-            broadcastUserCount();
+            authenticatedConnections.remove(conn);
+            broadcastUserCountToAuthenticated();
         }
     }
 
@@ -144,24 +166,26 @@ public class MessengerServer extends WebSocketServer {
         return new Message("Server", "User left the chat", System.currentTimeMillis());
     }
 
-    private void broadcastUserCount() {
-        Message userCountMessage = new Message("System", "USER_COUNT:" + getConnectionCount(), System.currentTimeMillis());
-        broadcast(userCountMessage);
+    private void broadcastUserCountToAuthenticated() {
+        Message userCountMessage = new Message("System", "USER_COUNT:" + getAuthenticatedConnectionCount(), System.currentTimeMillis());
+        broadcastToAuthenticated(userCountMessage);
     }
 
-    protected void broadcast(Message message) {
+    protected void broadcastToAuthenticated(Message message) {
         try {
             String jsonMessage = objectMapper.writeValueAsString(message);
-            Set<WebSocket> connectionsCopy = new HashSet<>(connections);
+            Set<WebSocket> connectionsCopy = new HashSet<>(authenticatedConnections);
             for (WebSocket conn : connectionsCopy) {
                 if (conn.isOpen()) {
                     try {
                         conn.send(jsonMessage);
                     } catch (Exception e) {
                         System.err.println("Error sending to client, removing connection: " + e.getMessage());
+                        authenticatedConnections.remove(conn);
                         connections.remove(conn);
                     }
                 } else {
+                    authenticatedConnections.remove(conn);
                     connections.remove(conn);
                 }
             }
@@ -170,8 +194,17 @@ public class MessengerServer extends WebSocketServer {
         }
     }
 
+    // Keep the old broadcast method for backwards compatibility if needed
+    protected void broadcast(Message message) {
+        broadcastToAuthenticated(message);
+    }
+
     public int getConnectionCount() {
         return connections.size();
+    }
+
+    public int getAuthenticatedConnectionCount() {
+        return authenticatedConnections.size();
     }
 
     Message processIncomingRawJson(String rawJson) throws java.io.IOException {

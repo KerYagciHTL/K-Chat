@@ -119,10 +119,29 @@ public class MessengerWindow {
     }
 
     private void connectToServer() {
+        // Handle disconnect/cancel actions
+        if (connectButton.getText().equals("Disconnect")) {
+            if (client != null && !client.isClosed()) {
+                try {
+                    client.close();
+                    updateConnectionStatus("Disconnected");
+                } catch (Exception ignore) {}
+            }
+            return;
+        }
+
+        if (connectButton.getText().equals("Cancel")) {
+            if (client != null && !client.isClosed()) {
+                try { client.close(); } catch (Exception ignore) {}
+            }
+            updateConnectionStatus("Disconnected");
+            return;
+        }
+
         try {
             String enteredServerId = serverIdField.getText() == null ? "" : serverIdField.getText().trim();
             if (enteredServerId.isEmpty()) {
-                updateConnectionStatus("Error: serverId required");
+                updateConnectionStatus("Error: Server ID required");
                 return;
             }
             currentUsername = usernameField.getText().trim();
@@ -147,7 +166,7 @@ public class MessengerWindow {
             client.connect();
             updateConnectionStatus("Connecting (socket)...");
         } catch (Exception e) {
-            updateConnectionStatus("Connection failed: " + e.getMessage());
+            updateConnectionStatus("Error: Connection failed - " + e.getMessage());
             System.err.println("Connection error: " + e.getMessage());
         }
     }
@@ -200,29 +219,48 @@ public class MessengerWindow {
             boolean connected = status.startsWith("Connected");
             boolean working = status.startsWith("Connecting") || status.contains("Handshake");
             boolean error = status.startsWith("Error");
+
             if (connected) {
                 statusLabel.setStyle("-fx-text-fill: green;");
                 messageInput.setDisable(false);
                 sendButton.setDisable(false);
-                connectButton.setText("Reconnect");
+                connectButton.setText("Disconnect");
                 serverIdField.setStyle("");
             } else if (working) {
                 statusLabel.setStyle("-fx-text-fill: orange;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
-                connectButton.setText("Connect");
+                connectButton.setText("Cancel");
                 serverIdField.setStyle("");
             } else if (error) {
                 statusLabel.setStyle("-fx-text-fill: #d32f2f;");
                 messageInput.setDisable(true);
                 sendButton.setDisable(true);
                 connectButton.setText("Connect");
-                // Clear any previous connection status or user info
-                // If you have a label or field showing 'User connected to the Server', clear it here
-                // For example:
-                // connectedUserLabel.setText("");
-                // Optionally reset other UI elements as needed
-                serverIdField.setStyle("-fx-border-color: #d32f2f;");
+
+                // Show specific error styling for invalid server ID
+                if (status.contains("Invalid server ID") || status.contains("Server ID not accepted") ||
+                    status.contains("serverId") || status.contains("Handshake")) {
+                    serverIdField.setStyle("-fx-border-color: #d32f2f; -fx-border-width: 2px;");
+                    // Show error message in chat area
+                    appendMessage("❌ Connection failed: The server ID you entered is not valid or the server is not available.");
+                } else if (status.contains("server not reachable")) {
+                    appendMessage("❌ Connection failed: Cannot reach the server. Make sure the server is running.");
+                } else {
+                    serverIdField.setStyle("-fx-border-color: #d32f2f;");
+                    appendMessage("❌ Connection failed: " + status.substring(status.indexOf(":") + 1).trim());
+                }
+
+                // Reset user count to 0 on error
+                userCountLabel.setText("Users: 0");
+            } else {
+                // Disconnected state
+                statusLabel.setStyle("-fx-text-fill: red;");
+                messageInput.setDisable(true);
+                sendButton.setDisable(true);
+                connectButton.setText("Connect");
+                serverIdField.setStyle("");
+                userCountLabel.setText("Users: 0");
             }
         });
     }
