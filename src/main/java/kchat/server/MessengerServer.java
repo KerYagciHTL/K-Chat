@@ -53,7 +53,7 @@ public class MessengerServer extends WebSocketServer {
     @Override
     public void onOpen(WebSocket conn, ClientHandshake handshake) {
         connections.add(conn);
-        System.out.println("New connection: " + conn.getRemoteSocketAddress());
+        // Removed logging - server should be silent about connections
         // Don't broadcast anything until authentication is complete
     }
 
@@ -61,7 +61,7 @@ public class MessengerServer extends WebSocketServer {
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         connections.remove(conn);
         boolean wasAuthenticated = authenticatedConnections.remove(conn);
-        System.out.println("Connection closed: " + conn.getRemoteSocketAddress());
+        // Removed logging - server should be silent about disconnections
 
         // Only broadcast leave message and update user count if the user was properly authenticated
         if (wasAuthenticated) {
@@ -82,7 +82,7 @@ public class MessengerServer extends WebSocketServer {
 
             // Only process regular messages from authenticated clients
             if (!authenticatedConnections.contains(conn)) {
-                System.err.println("Ignoring message from unauthenticated client");
+                // Silent ignore - no logging about unauthenticated clients
                 return;
             }
 
@@ -90,7 +90,10 @@ public class MessengerServer extends WebSocketServer {
             System.out.println("Received message: " + msg.getContent() + " from " + msg.getSender());
             broadcastToAuthenticated(msg);
         } catch (Exception e) {
-            System.err.println("Error processing message: " + e.getMessage());
+            // Only log actual processing errors, not authentication issues
+            if (authenticatedConnections.contains(conn)) {
+                System.err.println("Error processing message: " + e.getMessage());
+            }
         }
     }
 
@@ -99,13 +102,13 @@ public class MessengerServer extends WebSocketServer {
             // Format: HELLO:serverId:clientPubB64
             String[] parts = msg.getContent().split(":", 3);
             if (parts.length < 3) {
-                System.err.println("Malformed HELLO message");
+                // Silent rejection - no logging
                 conn.close(1002, "Malformed handshake");
                 return;
             }
             String claimedServerId = parts[1];
             if (!serverId.equals(claimedServerId)) {
-                System.err.println("Client claimed wrong serverId: " + claimedServerId);
+                // Silent rejection - no logging about wrong server ID
                 conn.close(1002, "Invalid serverId");
                 return;
             }
@@ -126,7 +129,7 @@ public class MessengerServer extends WebSocketServer {
             broadcastUserCountToAuthenticated();
 
         } catch (Exception e) {
-            System.err.println("Handshake error: " + e.getMessage());
+            // Silent rejection - no logging about handshake errors
             try { conn.close(1011, "Handshake failure"); } catch (Exception ignore) {}
         }
     }
